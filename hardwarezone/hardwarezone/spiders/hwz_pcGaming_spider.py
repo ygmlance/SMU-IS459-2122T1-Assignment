@@ -22,12 +22,13 @@ class HWZSpider(scrapy.Spider):
                 
                 yield response.follow(topic_page)
                 
-        for post in response.xpath('//div[has-class("block-container lbContainer")]/div'):
-            yield {
-                'topic': response.xpath('//div[has-class("p-title")]/h1/text()').get(),
-                'author': post.xpath('article/div/div/section/div/h4/a/text()').get(),
-                'content': post.xpath('article/div/div[has-class("message-cell--main")]/div/div/div/article/div/descendant::text()').extract(),
-            }
+        for post_list in response.xpath('//div[has-class("block-container lbContainer")]/div'):
+            for post in post_list.xpath('article[has-class("message")]'):
+                yield {
+                    'topic': response.xpath('//div[has-class("p-title")]/h1/text()').get(),
+                    'author': post.xpath('div/div/section/div/h4/a/text()').get(),
+                    'content': post.xpath('div/div[has-class("message-cell--main")]/div/div/div/article/div/descendant::text()').extract(),
+                }
         
         next_page = response.xpath('//a[has-class("pageNav-jump", "pageNav-jump--next")]/@href').get()
         if next_page is not None:
