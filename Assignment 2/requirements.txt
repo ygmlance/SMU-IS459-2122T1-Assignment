@@ -1,0 +1,4 @@
+textblob==0.15.3
+nltk==3.6.2
+pyspark==3.1.2
+graphframes==0.6
