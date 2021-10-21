@@ -1,7 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 from pyspark.sql.functions import *
-import ast
 
 def parse_data_from_kafka_message(sdf, schema):
     assert sdf.isStreaming == True, "DataFrame doesn't receive streaming data"
@@ -11,9 +10,11 @@ def parse_data_from_kafka_message(sdf, schema):
             "timestamp",
             col('value.*')
         ) \
-        .withColumn("content", lower(col("content"))) 
-
-    
+        .withColumn(
+            "content", 
+            lower(col("content"))
+        ) 
+        
     return sdf
     
 if __name__ == "__main__":
@@ -47,19 +48,25 @@ if __name__ == "__main__":
     lines = parse_data_from_kafka_message(lines, hardwarezoneSchema)
     
     
-    # windowedAuthorCount_pdf = lines \
-    #     .withWatermark("timestamp", "2 minutes") \
-    #     .groupBy(
-    #         window("timestamp", "2 minutes", "1 minutes"),
-    #         "author"
-    #     ) \
-    #     .count() \
-    #     .toPandas() \
-    #     .sort_values("count", ascending=False)
+    windowedAuthorCount = lines \
+        .withWatermark("timestamp", "2 minutes") \
+        .groupBy(
+            window("timestamp", "2 minutes", "1 minutes"),
+            "author"
+        ) \
+        .count() \
+        .orderBy(desc("window"), desc("count")) \
+        .limit(10) \
+        .writeStream \
+        .queryName("countAuthor") \
+        .outputMode("complete") \
+        .format("console") \
+        .trigger(processingTime="1 minutes") \
+        .option("checkpointLocation", "/home/amazinglance/authorCount-checkpoint") \
+        .option("truncate", False) \
+        .start()
     
-    
-    
-    wordCount = lines \
+    windowedWordCount = lines \
         .withWatermark("timestamp", "2 minutes") \
         .select(
             "timestamp",
@@ -72,20 +79,16 @@ if __name__ == "__main__":
             "word"
         ) \
         .count() \
-        .limit(10)
-        
-    print(wordCount)
-    
-    
-    #Select the content field and output
-    contents = wordCount \
+        .orderBy(desc("window"), desc("count")) \
+        .limit(10) \
         .writeStream \
-        .outputMode("append") \
+        .queryName("countWord") \
+        .outputMode("complete") \
         .format("console") \
-        .trigger(processingTime="10 seconds") \
-        .option("checkpointLocation", "/home/amazinglance/spark-checkpoint") \
+        .trigger(processingTime="1 minutes") \
+        .option("checkpointLocation", "/home/amazinglance/wordCount-checkpoint") \
         .option("truncate", False) \
         .start()
-
-    #Start the job and wait for the incoming messages
-    contents.awaitTermination()
+        
+    windowedWordCount.awaitTermination()
+    windowedAuthorCount.awaitTermination()
