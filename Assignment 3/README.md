@@ -20,12 +20,10 @@ To install all the Python libraries required, run the following command
 pip3 install -r requirements.txt
 ```
 
-## NLTK Stopword
+## Submitting the Spark Job
 
-To ensure that you have the stopwords install. You would need to run the following code using Python interactive shell before running the actual `assignment2.py`
+Run the following command to submit the spark job
 
 ```
->>> import nltk
->>> nltk.download("stopwords")
+>>> spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 kafka_wordcount.py
 ```
-
