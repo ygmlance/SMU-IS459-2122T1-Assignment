@@ -4,6 +4,9 @@ from django.http import HttpResponse,JsonResponse
 from .models import User,Topic,Post,PostCount
 from .forms import PostForm
 
+import pymongo
+my_client = pymongo.MongoClient("mongodb://localhost:27017")
+
 # Create your views here.
 def index(request):
     post_list = Post.objects.all()
@@ -33,15 +36,20 @@ def uploadPost(request):
 def get_post_count(request):
     labels = []
     data = []
+    
+    dbname = my_client["hardwarezone"]
+    collection = dbname['kafka-output']
 
-    queryset = PostCount.objects.all()
+    latest_message = collection.find({}).sort("window.end", -1)
+    latest_timestamp = latest_message[0]["window"]["end"]
 
-    for entry in queryset:
-        labels.append(entry.user_name)
-        data.append(entry.post_count)
+    author_count = collection.find({"window.end": latest_timestamp}, {"author": 1, "count": 1}).sort([("window.end", -1), ("count", -1)])
+    for row in author_count:
+        labels.append(row["author"])
+        data.append(row["count"])
 
     return JsonResponse(data={
-        'labels': labels,
+        'labels: labels,
         'data': data,
     })
 
